@@ -1,0 +1,144 @@
+---
+title: "Tumor Classifier - K-Nearest Neighbours"
+author: "Your name"
+date: "September 11, 2024"
+output: 
+  html_document:
+    toc: true
+    number_sections: true
+editor_options: 
+---
+
+# Tumour Classifier with K-Nearest Neighbours (KNN)
+
+In this exercise, you'll build a KNN classifier to distinguish between tumor classes based on a subset of features. Complete the steps by filling in the missing code and answering questions.
+
+You will use the `caret` package for this exercise. Use the 'help' in RStudio to discover how they work. The key functions that you will use are:
+
+- createDataPartition
+- trainControl
+- train
+- predict
+- confusionMatrix
+
+## Instructions
+
+### Step 1: Install and load necessary libraries
+
+Fill in the missing code to install and load the following libraries: tidyverse, here, and caret.
+
+```{r }
+# Install packages if you haven't already
+# install.packages("caret")
+
+library(tidyverse) 
+library(caret)
+library(here)
+```
+
+### Step 2: Load the dataset
+
+```{r load-data}
+cancer_data <- read_csv(here("data","synthetic_cancer_data.csv"))
+cancer_data
+```
+
+### Step 3: Prepare the data
+
+-   Select the three relevant variables; Perimeter, Concavity, Class
+-   Convert the target variable to a factor
+-   Split the data into 80% training and 20% testing sets
+
+```{r}
+
+# Keep only the three relevant columns
+data_subset <- cancer_data %>% 
+  select(Perimeter, Concavity, Class)
+
+# Encode the target variable as a factor
+
+cancer_data <- cancer_data %>% 
+  mutate(Class = factor(Class))
+  
+# Set a seed for reproducibility
+set.seed(42)
+
+# Split the data into training (80%) and testing (20%) sets
+train_index <- createDataPartition(cancer_data$Class, p = 0.8, list = FALSE)
+
+train_data <- cancer_data[train_index, ]
+
+test_data <- cancer_data[-train_index, ]
+
+```
+
+*Question*: Why is it important to set a seed before splitting the data?
+
+*Answer*: Because otherwise whenever you run the code you will get a different/random split (i.e. you need to set the same seed for reproducibility, as it will give you the same training/test split when you rerun it).
+
+### Step 4: Train the KNN model
+
+-   Define a cross-validation control.
+-   Train the KNN model, tuning the number of neighbours 'k' using tuneLength = 10.
+
+```{r}
+# Define training control (using 10-fold cross-validation)
+
+trainControl <- trainControl(method="cv", number=10)
+
+# Train the KNN model 
+knn_model <- train(Class ~ Perimeter + Concavity, 
+                 data = train_data, 
+                 method = "knn",
+                 tuneLength = 10,
+                 trControl = trainControl,
+                 preProcess = c("center", "scale"))
+
+# View the results
+knn_model
+
+```
+
+*Question*: What is the purpose of using cross-validation when training the model?
+
+*Answer*: It's to ensure the model fits the data well. We want to be able to evaluate if the data fits the model well, and if we only split it once into a training and test set, we may not get a comprehensive overview of whether the model is maybe over or underfitting to the data or otherwise isn't accurate/precise. Cross-validation enables us to split the data into multiple groups that we then test against a test group, and then we shuffle the groups.test groups again etc. for k-1 times.
+
+### Step 5: Make predictions
+
+-   Use the trained model to predict on the test data.
+-   Assess the performance using a confusion matrix.
+
+```{r}
+# Make predictions on the test set
+predictions <- predict(knn_model, newdata = test_data)
+
+# Confusion matrix  
+confusionMatrix(predictions, test_data$Class)
+
+```
+
+*Question*: What insights can you gather from the confusion matrix? Is the model performing well?
+
+*Answer*: no. it's bad lol. It has an accuracy of 60.2%, sensitity of 67.2 and specificity of 52.7%. whoops.
+
+### Step 6: Tune the model (optional)
+
+-   Explore the best value of 'k' from the trained model.
+-   Discuss how the number of neighbors (k) impacts model performance.
+
+```{r}
+# Check the best value of 'k'
+trainControl <- trainControl(method="cv", number=5)
+knn_model <- train(Class ~ Perimeter + Concavity, 
+                 data = train_data, 
+                 method = "knn",
+                 tuneLength = 15,
+                 trControl = trainControl,
+                 preProcess = c("center", "scale"))
+knn_model
+
+```
+
+*Question*: What is the optimal value of 'k'? How would you explain its significance?
+
+*Answer*: The optimal value of k is 5. However, this still gives a very low accuracy so i would probs change models.
